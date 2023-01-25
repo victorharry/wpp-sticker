@@ -21,7 +21,7 @@ client.on('ready', () => {
 client.on('message_create', msg => {
     const command = msg.body.split(' ')[0];
     const sender = msg.from.includes(process.env.PHONE_NUMBER_WITHOUT_FIRST_DIGIT) ? msg.to : msg.from
-    if (command === "/sticker" && allowedUserOrGroupIds.includes(sender)) {
+    if (command === "/sticker") {
         generateSticker(msg, sender)
     }
 });
