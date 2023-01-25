@@ -5,16 +5,6 @@ const client = new Client({})
 const { removeBackgroundFromImageBase64 } = require('remove.bg')
 require('dotenv').config()
 
-const ID_GROUP_Teste_bot = '120363029774299517@g.us'
-const ID_GROUP_Ah_amizade = '5524981176474-1527282309@g.us'
-const ID_USER_eu = '5524999273282@c.us'
-
-const allowedUserOrGroupIds = [
-    ID_GROUP_Teste_bot,
-    ID_GROUP_Ah_amizade, 
-    ID_USER_eu
-]
-
 client.on('qr', qr => {
     qrcode.generate(qr, {small: true})
 });
