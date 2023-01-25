@@ -5,6 +5,16 @@ const client = new Client({})
 const { removeBackgroundFromImageBase64 } = require('remove.bg')
 require('dotenv').config()
 
+const ID_GROUP_Teste_bot = '120363029774299517@g.us'
+const ID_GROUP_Ah_amizade = '5524981176474-1527282309@g.us'
+const ID_USER_eu = '5524999273282@c.us'
+
+const allowedUserOrGroupIds = [
+    ID_GROUP_Teste_bot,
+    ID_GROUP_Ah_amizade, 
+    ID_USER_eu
+]
+
 client.on('qr', qr => {
     qrcode.generate(qr, {small: true})
 });
@@ -21,7 +31,9 @@ client.on('ready', () => {
 client.on('message_create', msg => {
     const command = msg.body.split(' ')[0];
     const sender = msg.from.includes(process.env.PHONE_NUMBER_WITHOUT_FIRST_DIGIT) ? msg.to : msg.from
-    if (command === "/sticker")  generateSticker(msg, sender)
+    if (command === "/sticker" && allowedUserOrGroupIds.includes(sender)) {
+        generateSticker(msg, sender)
+    }
 });
 
 client.initialize();
@@ -35,7 +47,7 @@ const generateSticker = async (msg, sender) => {
                 image = await removeBackground(image)
             }
 
-            image = await new MessageMedia("image/jpeg", data, "image.jpg")
+            image = await new MessageMedia("image/jpeg", image, "image.jpg")
             await client.sendMessage(sender, image, { sendMediaAsSticker: true })
         } catch(e) {
             msg.reply("❌ Erro ao processar imagem")
