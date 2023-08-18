@@ -5,4 +5,6 @@ DOCKER_IMAGE="linuxserver/ffmpeg:latest"
 # Change working dir to the script folder
 pushd "$(dirname "$0")" > /dev/null
 
-docker run -i -v /var/folders:/var/folders ${DOCKER_IMAGE} "$@"
+tmp=$(dirname $(mktemp -u))
+
+docker run -i --rm -v $tmp:$tmp ${DOCKER_IMAGE} "$@"
