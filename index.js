@@ -1,49 +1,96 @@
-const { Client, MessageMedia } = require('whatsapp-web.js')
+const { Client, MessageMedia, LocalAuth } = require('whatsapp-web.js')
 const qrcode = require('qrcode-terminal')
+const commander = require('commander')
 const axios = require('axios')
-const client = new Client({})
+const urlRegex = require('url-regex')
 
-client.on('qr', qr => {
-    qrcode.generate(qr, {small: true})
-});
+const STICKER_COMMAND = "/sticker"
 
-client.on('ready', () => {
-    console.log('O Wpp-Sticker está pronto 😋 Não esquece da estrelinha no repo ⭐')
-});
+const MediaType = {
+    Image: { contentType: "image/jpeg", fileName: "image.jpg" },
+    Video: { contentType: "video/mp4", fileName: "image.mp4" }
+}
 
-/**
- * Aqui vem como default 'message', bora trocar para 'message_create', 
- * dessa forma nós também poderemos dar comandos e não apenas seus 
- * contatos.
- */
-client.on('message_create', msg => {
-    const command = msg.body.split(' ')[0];
-    // Cola seu número onde tem o 84848484, sem o 9
-    const sender = msg.from.includes("84848484") ? msg.to : msg.from
-    if (command === "/sticker")  generateSticker(msg, sender)
-});
+// Parse command line arguments
+commander
+    .usage('[OPTIONS]...')
+    .option('-d, --debug', 'Show debug logs', false)
+    .option('-c, --chrome <value>', 'Use a installed Chrome Browser')
+    .option('-f, --ffmpeg <value>', 'Use a different ffmpeg')
+    .parse(process.argv)
 
-client.initialize();
+const options = commander.opts()
+
+const log_debug = options.debug ? console.log : () => { }
+const puppeteerConfig = !options.chrome ? {} : { executablePath: options.chrome, args: ['--no-sandbox'] }
+const ffmpegPath = options.ffmpeg ? options.ffmpeg : undefined
+
+// Inicialize WhatsApp Web client
+const client = new Client({
+    authStrategy: new LocalAuth(),
+    ffmpegPath,
+    puppeteer: puppeteerConfig,
+})
+
+log_debug("Starting...")
 
 const generateSticker = async (msg, sender) => {
-    if(msg.type === "image") {
-        try {
-            const { data } = await msg.downloadMedia()
-            const image = await new MessageMedia("image/jpeg", data, "image.jpg")
-            await client.sendMessage(sender, image, { sendMediaAsSticker: true })
-        } catch(e) {
-            msg.reply("❌ Erro ao processar imagem")
-        }
-    } else {
-        try {
+    log_debug("Processing message ", msg.type, JSON.stringify(msg.body, null, 4))
+    await msg.reply("⏳ Processando, aguarde...")
 
-            const url = msg.body.substring(msg.body.indexOf(" ")).trim()
-            const { data } = await axios.get(url, {responseType: 'arraybuffer'})
-            const returnedB64 = Buffer.from(data).toString('base64');
-            const image = await new MessageMedia("image/jpeg", returnedB64, "image.jpg")
-            await client.sendMessage(sender, image, { sendMediaAsSticker: true })
-        } catch(e) {
-            msg.reply("❌ Não foi possível gerar um sticker com esse link")
+    if (msg.type === "image") {
+        log_debug()
+        const { data } = await msg.downloadMedia()
+        await sendMediaSticker(sender, MediaType.Image, data)
+    } else if (msg.type === "video") {
+        const { data } = await msg.downloadMedia()
+        await sendMediaSticker(sender, MediaType.Video, data)
+    } else if (msg.type === "chat") {
+        let url = msg.body.split(" ").reduce((acc, elem) => acc ? acc : (urlRegex().test(elem) ? elem : false), false)
+        if (url) {
+            log_debug("URL:", url)
+            let { data, headers } = await axios.get(url, { responseType: 'arraybuffer' })
+            data = Buffer.from(data).toString('base64');
+            let mediaType;
+            if (headers['content-type'].includes("image")) {
+                mediaType = MediaType.Image
+            } else if (headers['content-type'].includes("video")) {
+                mediaType = MediaType.Video
+            } else {
+                msg.reply("❌ Erro, URL inválida!")
+                return
+            }
+            await sendMediaSticker(sender, mediaType, data)
+        } else {
+            msg.reply("❌ Erro, URL inválida!")
         }
     }
 }
+
+const sendMediaSticker = async (sender, type, data) => {
+    const media = new MessageMedia(type.contentType, data, type.fileName)
+    await client.sendMessage(sender, media, { sendMediaAsSticker: true })
+}
+
+client.on('qr', qr => {
+    qrcode.generate(qr, { small: true })
+})
+
+client.on('ready', () => {
+    console.log('Wpp-Sticker is ready!')
+})
+
+client.on('message_create', async msg => {
+    if (msg.body.split(" ").includes(STICKER_COMMAND)) {
+        log_debug("User:", client.info.wid.user, "To:", msg.to, "From:", msg.from)
+        const sender = msg.from.startsWith(client.info.wid.user) ? msg.to : msg.from
+        try {
+            await generateSticker(msg, sender)
+        } catch (e) {
+            console.log(e, JSON.stringify(msg, null, 4))
+            msg.reply("❌ Erro ao gerar Sticker!")
+        }
+    }
+})
+
+client.initialize()

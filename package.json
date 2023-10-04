@@ -9,12 +9,17 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "axios": "^1.2.3",
-    "jimp": "^0.16.2",
+    "axios": "^1.5.1",
+    "commander": "^11.0.0",
+    "jimp": "^0.22.10",
     "qrcode-terminal": "^0.12.0",
-    "whatsapp-web.js": "^1.19.2"
+    "url-regex": "^5.0.0",
+    "whatsapp-web.js": "^1.22.2-alpha.1"
   },
   "devDependencies": {
-    "typescript": "^4.9.4"
+    "typescript": "^5.2.2"
+  },
+  "resolutions": {
+    "xml2js": "^0.6.2"
   }
 }
