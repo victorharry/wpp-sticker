@@ -22,7 +22,7 @@ commander
 const options = commander.opts()
 
 const log_debug = options.debug ? console.log : () => { }
-const puppeteerConfig = !options.chrome ? {} : { executablePath: options.chrome, args: ['--no-sandbox'] }
+const puppeteerConfig = !options.chrome ? { executablePath: "/usr/bin/chromium-browser", args: ['--no-sandbox'] } : { executablePath: "/usr/bin/chromium-browser", args: ['--no-sandbox'] }
 const ffmpegPath = options.ffmpeg ? options.ffmpeg : undefined
 
 // Inicialize WhatsApp Web client
@@ -30,21 +30,24 @@ const client = new Client({
     authStrategy: new LocalAuth(),
     ffmpegPath,
     puppeteer: puppeteerConfig,
+    webVersionCache: {
+        type: "remote",
+        remotePath:
+          "https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html",
+    },
 })
 
-log_debug("Starting...")
-
 const generateSticker = async (msg, sender) => {
-    log_debug("Processing message ", msg.type, JSON.stringify(msg.body, null, 4))
-    await msg.reply("⏳ Processando, aguarde...")
-
     if (msg.type === "image") {
         log_debug()
         const { data } = await msg.downloadMedia()
         await sendMediaSticker(sender, MediaType.Image, data)
     } else if (msg.type === "video") {
         const { data } = await msg.downloadMedia()
-        await sendMediaSticker(sender, MediaType.Video, data)
+        console.log(data)
+        const resp = await sendMediaSticker(sender, MediaType.Video, data)
+        console.log(resp)
+
     } else if (msg.type === "chat") {
         let url = msg.body.split(" ").reduce((acc, elem) => acc ? acc : (urlRegex().test(elem) ? elem : false), false)
         if (url) {
@@ -81,7 +84,7 @@ client.on('ready', () => {
 })
 
 client.on('message_create', async msg => {
-    if (msg.body.split(" ").includes(STICKER_COMMAND)) {
+    if (msg.body.split(" ")[0] === (STICKER_COMMAND)) {
         log_debug("User:", client.info.wid.user, "To:", msg.to, "From:", msg.from)
         const sender = msg.from.startsWith(client.info.wid.user) ? msg.to : msg.from
         try {
